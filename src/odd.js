@@ -1,3 +1,7 @@
+import * as odd from "@oddjs/odd";
+console.log("odd", odd);
+
+
 async function getProgram(odd) {
   const appInfo = { creator: "Shovel", name: "Rolod" }
   const program = await odd.program({ namespace: appInfo })
