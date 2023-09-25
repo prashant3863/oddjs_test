@@ -3,7 +3,6 @@
 
 <head>
   <link rel="stylesheet" href="./styles/style.css" />
-  <script type="module" src="https://unpkg.com/@oddjs/odd@0.37.2/dist/index.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/papnkukn/qrcode-svg/dist/qrcode.min.js"></script>
 </head>
 
@@ -19,18 +18,19 @@
       window.signout = signout;
       window.producerChallengeProcessor = producerChallengeProcessor;
 
-      var program = await getProgram(globalThis.oddjs);
+      var program = await getProgram();
       var session = await getSession(program);
       if (session === undefined) {
         window.location.href = '/home';
       } else {
-        getProfile(globalThis.oddjs).then((result) => {
+        await session.fs.publish()
+        getProfile().then((result) => {
           document.getElementById("handle").innerHTML = result.handle
           document.getElementById("name").innerHTML = "Name: " + result.name
           document.getElementById("formname").value = result.name
           document.querySelector(".avatar > div > span").innerHTML = result.handle.charAt(0).toUpperCase()
         })
-        getContacts(globalThis.oddjs).then((result) => {
+        getContacts().then((result) => {
           let table = document.createElement('table');
           table.classList.add("table", "table-zebra", "table-pin-rows")
           var tbody = table.createTBody();
@@ -47,7 +47,7 @@
           }
           document.getElementById("contact-list-table").appendChild(table)
         })
-        
+
         window.setContactEditForm = function (id, name){
           document.getElementById("edit-contact-name").value = name
           document.getElementById("edit-contact-id").value = id
@@ -63,7 +63,7 @@
         console.log("generating svg")
         var svg = qrcode.svg();
         document.querySelector("#link_device_modal > .modal-box > .modal-action > .qr").innerHTML = svg;
-        
+
         var producer = await program.auth.accountProducer(session.username)
         console.log("first producer: ", producer)
         producer.on("challenge", challenge => {
@@ -104,7 +104,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><g fill="currentColor"><path d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8zm4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647l.646-.647a.5.5 0 0 1 .708 0l.646.647l.646-.647a.5.5 0 0 1 .708 0l.646.647l.793-.793l-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5z" /><path d="M4 8a1 1 0 1 1-2 0a1 1 0 0 1 2 0z" /></g></svg>
               Recovery Key
             </button>
-            <button class="btn btn-outline btn-sm w-2/3" onclick="signout(globalThis.oddjs).then(function(){window.location.href='/home'}); console.log('signedout')">
+            <button class="btn btn-outline btn-sm w-2/3" onclick="signout().then(function(){window.location.href='/home'}); console.log('signedout')">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2zM3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H3z" /></svg>
               Logout
             </button>
@@ -115,7 +115,7 @@
               <p class="text-xs">Press ESC key or click the button below to close</p>
               <div class="modal-action flex justify-center items-center">
                 <form id="profile-updatae-form"
-                  onsubmit="event.preventDefault(); updateProfile(globalThis.oddjs, document.getElementById('formname').value).then(function(){window.location.reload()}); return false"
+                  onsubmit="event.preventDefault(); updateProfile(document.getElementById('formname').value).then(function(){console.log('done')}); return false"
                   class="space-y-1 text-center">
                   <label for="name" class="font-bold">Name</label>
                   <input type="text" id="formname" class="border border-gray-300 px-2 py-1 rounded-lg" value="name">
@@ -180,7 +180,7 @@
               <p class="text-xs">Press ESC key or click the button below to close</p>
               <div class="modal-action flex justify-center items-center">
                 <form id="add-contact-form"
-                  onsubmit="event.preventDefault(); addContact(globalThis.oddjs, document.getElementById('contacthandle').value).then(function(){window.location.reload()}); return false"
+                  onsubmit="event.preventDefault(); addContact(document.getElementById('contacthandle').value).then(function(){console.log('done')}); return false"
                   class="space-y-1 text-center">
                   <label for="user_name" class="font-bold">Name</label>
                   <input type="text" id="contacthandle" class="border border-gray-300 px-2 py-1 rounded-lg">
@@ -209,7 +209,7 @@
                 <p class="text-xs">Press ESC key or click the button below to close</p>
                 <div class="modal-action flex justify-center items-center">
                   <form id="edit-contact-form"
-                    onsubmit="event.preventDefault(); editContact(globalThis.oddjs, document.getElementById('edit-contact-id').value, document.getElementById('edit-contact-name').value).then(function(){window.location.reload()}); return false"
+                    onsubmit="event.preventDefault(); editContact(document.getElementById('edit-contact-id').value, document.getElementById('edit-contact-name').value).then(function(){console.log('done')}); return false"
                     class="space-y-1 text-center">
                     <label for="user_name" class="font-bold">Name</label>
                     <input type="text" id="edit-contact-id" hidden class="border border-gray-300 px-2 py-1 rounded-lg">
@@ -224,7 +224,7 @@
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><g fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8L4.646 5.354a.5.5 0 0 1 0-.708z"/></g></svg>
                     </button>
                   </form>
-                  <button class="btn btn-outline btn-sm" onclick="deleteContact(globalThis.oddjs, document.getElementById('edit-contact-id').value).then(function(){window.location.reload()})">
+                  <button class="btn btn-outline btn-sm" onclick="deleteContact(document.getElementById('edit-contact-id').value).then(function(){console.log('done')})">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1l-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z"/></svg>
                   </button>
                 </div>
