@@ -1,20 +1,22 @@
 import * as odd from "@oddjs/odd";
-console.log("odd", odd);
 
+let program = null
+async function getProgram() {
+  if (!program) {
+    const appInfo = { creator: "Shovel", name: "Rolod" }
+    program = await odd.program({ namespace: appInfo, debug: true })
+      .catch(error => {
+        switch (error) {
+          case odd.ProgramError.InsecureContext:
+            // ODD requires HTTPS
+            break;
+          case odd.ProgramError.UnsupportedBrowser:
+            // Browsers must support IndexedDB
+            break;
+        }
+      })
+  }
 
-async function getProgram(odd) {
-  const appInfo = { creator: "Shovel", name: "Rolod" }
-  const program = await odd.program({ namespace: appInfo })
-    .catch(error => {
-      switch (error) {
-        case odd.ProgramError.InsecureContext:
-          // ODD requires HTTPS
-          break;
-        case odd.ProgramError.UnsupportedBrowser:
-          // Browsers must support IndexedDB
-          break;
-      }
-    })
   return program;
 }
 
@@ -27,9 +29,9 @@ async function getSession(program) {
   return session;
 }
 
-async function signup(odd, username) {
-  var program = await getProgram(odd);
-  var session = await getSession(program);
+async function signup(username) {
+  var program = await getProgram()
+  var session = await getSession(program)
   const valid = await program.auth.isUsernameValid(username)
   const available = await program.auth.isUsernameAvailable(username)
   console.log("username available", available)
@@ -60,55 +62,65 @@ async function signup(odd, username) {
 
   const content = new TextDecoder().decode(await fs.read(profileFilePath))
   console.log("profile data :", content)
+
+  const timeout = setTimeout(() => {
+    clearTimeout(timeout)
+    window.location.href = "/app";
+  }, 5000)
 }
 
-async function getProfile(odd) {
-  var program = await getProgram(odd);
+async function getProfile() {
+  var program = await getProgram();
   var session = await getSession(program);
 
   const fs = session.fs;
   const { RootBranch } = odd.path
   const privateFilePath = odd.path.file(RootBranch.Private, "profile.json")
 
-  const content = new TextDecoder().decode(await fs.read(privateFilePath))
-  return JSON.parse(content)
+  const pathExists = await fs.exists(privateFilePath)
+  if (pathExists) {
+    const content = new TextDecoder().decode(await fs.read(privateFilePath))
+    return JSON.parse(content)
+  }
 }
 
-async function getContacts(odd) {
-  var program = await getProgram(odd);
+async function getContacts() {
+  var program = await getProgram();
   var session = await getSession(program);
   const fs = session.fs;
   const { RootBranch } = odd.path
   const privateFilePath = odd.path.file(RootBranch.Private, "contacts.json")
-
-  const content = new TextDecoder().decode(await fs.read(privateFilePath))
-  return JSON.parse(content)
+  const pathExists = await fs.exists(privateFilePath)
+  if (pathExists) {
+    const content = new TextDecoder().decode(await fs.read(privateFilePath))
+    return JSON.parse(content)
+  }
 }
 
-async function updateProfile(odd, name) {
-  await updateFile(odd, "profile.json", (content) => {
+async function updateProfile(name) {
+  await updateFile("profile.json", (content) => {
     content.name = name
     return content
   })
 }
-async function addContact(odd, newContact) {
-  await updateFile(odd, "contacts.json", (content) => {
+async function addContact(newContact) {
+  await updateFile("contacts.json", (content) => {
     var id = crypto.randomUUID()
     content.contactList[id] = newContact
     return content
   })
 }
 
-async function editContact(odd, id, contact) {
-  await updateFile(odd, "contacts.json", (content) => {
+async function editContact(id, contact) {
+  await updateFile("contacts.json", (content) => {
     var contactList = content.contactList
     contactList[id] = contact
     return content
   })
 }
 
-async function deleteContact(odd, id) {
-  await updateFile(odd, "contacts.json", (content) => {
+async function deleteContact(id) {
+  await updateFile("contacts.json", (content) => {
     delete content.contactList[id]
     console.log("delete", id)
     console.log("delete", content.contactList)
@@ -116,8 +128,8 @@ async function deleteContact(odd, id) {
   })
 }
 
-async function updateFile(odd, file, mutationFunction) {
-  var program = await getProgram(odd);
+async function updateFile(file, mutationFunction) {
+  var program = await getProgram();
   var session = await getSession(program);
 
   const fs = session.fs;
@@ -135,8 +147,8 @@ async function updateFile(odd, file, mutationFunction) {
   return readContent;
 }
 
-async function signout(odd) {
-  var program = await getProgram(odd);
+async function signout() {
+  var program = await getProgram();
   var session = await getSession(program);
   await session.destroy()
 }
@@ -154,4 +166,47 @@ async function producerChallengeProcessor(challenge, userInput) {
   }
 }
 
-export { signup, getProfile, updateProfile, getContacts, addContact, editContact, deleteContact, signout, getSession, getProgram, producerChallengeProcessor };
+async function waitForDataRoot(username) {
+  const program = await getProgram()
+  const reference = program?.components.reference
+  const EMPTY_CID = "Qmc5m94Gu7z62RC8waSKkZUrCCBJPyHbkpmGzEePxy2oXJ"
+
+  if (!reference)
+    throw new Error("Program must be initialized to check for data root")
+
+  let dataRoot = await reference.dataRoot.lookup(username)
+
+  if (dataRoot.toString() !== EMPTY_CID) return
+
+  return new Promise((resolve) => {
+    const maxRetries = 50
+    let attempt = 0
+
+    const dataRootInterval = setInterval(async () => {
+      dataRoot = await reference.dataRoot.lookup(username)
+
+      if (dataRoot.toString() === EMPTY_CID && attempt < maxRetries) {
+        attempt++
+        return
+      }
+
+      clearInterval(dataRootInterval)
+      resolve()
+    }, 500)
+  })
+}
+
+export {
+  signup,
+  getProfile,
+  updateProfile,
+  getContacts,
+  addContact,
+  editContact,
+  deleteContact,
+  signout,
+  getSession,
+  getProgram,
+  producerChallengeProcessor,
+  waitForDataRoot,
+};
